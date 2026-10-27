@@ -59,13 +59,19 @@ cd copilot-desktop-zh-linux
 
 `install.sh` 会：
 
-- 安装到 `${XDG_DATA_HOME:-~/.local/share}/copilot-zh`；
-- 在应用菜单里创建 **「GitHub Copilot 中文版」** 启动项（`Terminal=true`，因为要留着注入器）。
+- 把脚本安装到 `${XDG_DATA_HOME:-~/.local/share}/copilot-zh`；
+- 把**已有的「GitHub Copilot」桌面项**的 `Exec` 改指向本项目的 `launcher.sh`
+  （原件备份为 `github-copilot.desktop.copilot-zh.orig`）。
+
+> 为什么不是新建一个「GitHub Copilot 中文版」图标：Ubuntu Dock 会把「所有
+> `StartupWMClass` 与运行中窗口匹配」的桌面项都列出来。两个文件同时声明
+> `StartupWMClass=github`，就会出现**两个一模一样的 Copilot 图标**。改官方那份
+> 的 `Exec` 只有一张图标，也不会多出一个应用身份。
 
 ## 使用
 
 1. **先完全退出正在运行的 Copilot**（包括托盘图标）；
-2. 从应用菜单点「GitHub Copilot 中文版」，或在终端跑：
+2. 从应用菜单点「GitHub Copilot」（已指向中文版启动器），或在终端跑：
 
 ```bash
 ~/.local/share/copilot-zh/launcher.sh

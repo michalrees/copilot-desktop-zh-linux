@@ -28,7 +28,7 @@ if ! curl -s -m 1 "http://127.0.0.1:$PORT/" 2>/dev/null | grep -q "Inspectable t
 请先完全退出 Copilot（包括托盘图标），再运行本启动器。"
     fi
     echo "[copilot-zh] 启动 Copilot ..."
-    setsid "$APPIMAGE" >/dev/null 2>&1 &
+    setsid "$APPIMAGE" "$@" >/dev/null 2>&1 &
 fi
 
 exec node "$HERE/inject.mjs"
