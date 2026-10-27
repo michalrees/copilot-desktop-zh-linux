@@ -72,6 +72,12 @@ async function inject() {
         log(`已注入：文本 ${lastStats.text} 处、属性 ${lastStats.attr} 处、整句 ${lastStats.whole} 处`);
     else
         log('已注入（页面尚未返回统计）');
+
+    // 首屏抽样：肉眼确认「确实翻到了」，也方便排查词典没命中的情况
+    const sample = await current.evalValue(
+        `document.body.innerText.replace(/\\s+/g, ' ').trim().slice(0, 100)`);
+    if (sample)
+        log('界面抽样：' + sample);
 }
 
 async function probe() {
