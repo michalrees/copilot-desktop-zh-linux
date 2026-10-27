@@ -10,6 +10,7 @@
 //   4. 每 3 秒巡检一次：页面刷新/payload 丢失则重注，词典改动则热更新。
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -21,8 +22,24 @@ const DICT_FILE = path.join(HERE, 'dictionary.json');
 const PAYLOAD_FILE = path.join(HERE, 'payload.js');
 const POLL_MS = Number(process.env.COPILOT_ZH_POLL_MS || 3000);
 
+const LOG_FILE = path.join(os.homedir(), '.cache', 'copilot-zh', 'inject.log');
+const MAX_LOG_BYTES = 1024 * 1024;
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const log = (...args) => console.log('[copilot-zh]', ...args);
+
+// 从桌面图标启动时没有终端，所以日志同时落盘一份，便于事后排查。
+const log = (...args) => {
+    const message = args.join(' ');
+    console.log('[copilot-zh]', message);
+    try {
+        fs.mkdirSync(path.dirname(LOG_FILE), {recursive: true});
+        if (fs.existsSync(LOG_FILE) && fs.statSync(LOG_FILE).size > MAX_LOG_BYTES)
+            fs.truncateSync(LOG_FILE, 0);
+        fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${message}\n`);
+    } catch {
+        /* 日志写不进去不影响注入 */
+    }
+};
 
 function buildSource() {
     const dictSource = fs.readFileSync(DICT_FILE, 'utf8');

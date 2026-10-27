@@ -79,7 +79,14 @@ cd copilot-desktop-zh-linux
 
 3. 界面即为中文；终端窗口（注入器）保持打开，关闭它 = 停止实时翻译。
 
-> ⚠️ 必须用这个启动器打开才是中文。直接点官方图标启动的仍是英文（没有检查器端口，注入器无处可连）。
+> ⚠️ 桌面项是 `Terminal=false`，注入器在后台运行、没有终端窗口。相关操作：
+
+```bash
+tail -f ~/.cache/copilot-zh/inject.log                    # 看注入器日志
+pkill -f 'copilot-zh/inject.mjs'                          # 停止注入（界面刷新后恢复英文）
+```
+
+> ⚠️ 必须用这个启动器打开才是中文。直接跑 `/opt/github-copilot/...AppImage` 启动的仍是英文（没有检查器端口，注入器无处可连）。
 
 自定义 AppImage 路径：
 

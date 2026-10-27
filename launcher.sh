@@ -11,7 +11,14 @@ HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PORT="${COPILOT_ZH_PORT:-9222}"
 APPIMAGE="${COPILOT_APPIMAGE:-/opt/github-copilot/GitHub-Copilot-linux-x64.AppImage}"
 
-die() { echo "[copilot-zh] 错误：$*" >&2; exit 1; }
+die() {
+    echo "[copilot-zh] 错误：$*" >&2
+    # 从桌面图标启动时没有终端，用桌面通知告诉用户
+    if [[ ! -t 2 ]] && command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "GitHub Copilot 中文版" "启动失败" "$*"
+    fi
+    exit 1
+}
 
 command -v node >/dev/null 2>&1 || die "未找到 Node.js，请先安装 Node.js >= 22"
 node -e 'if (+process.versions.node.split(".")[0] < 22) { console.error("需要 Node.js >= 22，当前 " + process.version); process.exit(1) }' \
