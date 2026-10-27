@@ -23,13 +23,16 @@ const PAYLOAD_FILE = path.join(HERE, 'payload.js');
 const POLL_MS = Number(process.env.COPILOT_ZH_POLL_MS || 3000);
 
 const LOG_FILE = path.join(os.homedir(), '.cache', 'copilot-zh', 'inject.log');
+const LOCK_FILE = path.join(os.homedir(), '.cache', 'copilot-zh', 'inject.lock');
 const MAX_LOG_BYTES = 1024 * 1024;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // 从桌面图标启动时没有终端，所以日志同时落盘一份，便于事后排查。
-const log = (...args) => {
-    const message = args.join(' ');
+let lastMessage = '';
+let suppressed = 0;
+
+const writeLog = message => {
     console.log('[copilot-zh]', message);
     try {
         fs.mkdirSync(path.dirname(LOG_FILE), {recursive: true});
@@ -41,6 +44,21 @@ const log = (...args) => {
     }
 };
 
+// 抑制连续重复（比如应用没带检查器开关时每 3 秒一次的连接失败）
+const log = (...args) => {
+    const message = args.join(' ');
+    if (message === lastMessage) {
+        suppressed++;
+        return;
+    }
+    if (suppressed > 0) {
+        writeLog(`（上一条重复了 ${suppressed} 次，已折叠）`);
+        suppressed = 0;
+    }
+    lastMessage = message;
+    writeLog(message);
+};
+
 function buildSource() {
     const dictSource = fs.readFileSync(DICT_FILE, 'utf8');
     JSON.parse(dictSource); // 词典格式错误时尽早暴露，而不是在页面里静默失败
@@ -50,6 +68,44 @@ function buildSource() {
         payload,
         `;JSON.stringify(window.__copilotZh ? window.__copilotZh.stats : null)`,
     ].join('\n');
+}
+
+// WebKit 的检查器同一时刻只接受一个客户端；两个注入器会互相把对方挤掉，
+// 表现就是「有时候没汉化」。用 PID 锁保证单实例。
+function acquireSingleInstanceLock() {
+    try {
+        fs.mkdirSync(path.dirname(LOCK_FILE), {recursive: true});
+        if (fs.existsSync(LOCK_FILE)) {
+            const pid = Number.parseInt(fs.readFileSync(LOCK_FILE, 'utf8').trim(), 10);
+            if (pid && pid !== process.pid) {
+                let alive = false;
+                try {
+                    process.kill(pid, 0);
+                    alive = true;
+                } catch {
+                    alive = false;
+                }
+                if (alive) {
+                    log(`已有注入器在运行（pid ${pid}），本进程退出`);
+                    process.exit(0);
+                }
+            }
+        }
+        fs.writeFileSync(LOCK_FILE, String(process.pid));
+        const release = () => {
+            try {
+                if (fs.readFileSync(LOCK_FILE, 'utf8').trim() === String(process.pid))
+                    fs.unlinkSync(LOCK_FILE);
+            } catch {
+                /* ignore */
+            }
+        };
+        process.on('exit', release);
+        process.on('SIGINT', () => process.exit(0));
+        process.on('SIGTERM', () => process.exit(0));
+    } catch (err) {
+        log('锁文件写入失败，继续运行：' + err.message);
+    }
 }
 
 let session = null;
@@ -121,8 +177,19 @@ async function probe() {
 
 async function main() {
     log('GitHub Copilot 中文界面（Linux/WebKitGTK 版）');
+    acquireSingleInstanceLock();
     await waitForInspector();
-    await inject();
+    while (true) {
+        try {
+            await inject();
+            break;
+        } catch (err) {
+            log('首次注入失败，稍后重试：' + err.message);
+            session?.close();
+            session = null;
+            await sleep(2000);
+        }
+    }
 
     const onExit = () => {
         session?.close();
