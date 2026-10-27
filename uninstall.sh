@@ -7,6 +7,8 @@ DESKTOP="$DATA_HOME/applications/github-copilot.desktop"
 BACKUP="$DESKTOP.copilot-zh.orig"
 
 rm -rf "$DATA_HOME/copilot-zh"
+rm -f "$HOME/.config/environment.d/10-copilot-zh.conf"
+rm -f "$HOME/.config/autostart/copilot-zh-injector.desktop"
 rm -f "$DATA_HOME/applications/copilot-zh.desktop"
 if [[ -f $BACKUP ]]; then
     mv -f "$BACKUP" "$DESKTOP"

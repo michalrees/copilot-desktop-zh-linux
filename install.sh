@@ -51,8 +51,35 @@ PY
     fi
 fi
 
+# 会话级环境变量：让 Dock / 菜单 / 终端 等任何启动方式都带上检查器开关。
+# 需要重新登录一次才生效（environment.d 由 systemd 用户实例在登录时读取）。
+PORT="${COPILOT_ZH_PORT:-9222}"
+ENV_DIR="$HOME/.config/environment.d"
+mkdir -p "$ENV_DIR"
+cat > "$ENV_DIR/10-copilot-zh.conf" <<ENV_EOF
+# 由 copilot-zh 安装：让 WebKitGTK 暴露远程检查器，供汉化注入器连接
+WEBKIT_INSPECTOR_HTTP_SERVER=127.0.0.1:$PORT
+ENV_EOF
+
+# 登录自启注入器：应用随时启动都能被翻译
+AUTOSTART_DIR="$HOME/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
+cat > "$AUTOSTART_DIR/copilot-zh-injector.desktop" <<AUTOSTART_EOF
+[Desktop Entry]
+Type=Application
+Name=Copilot 中文注入器
+Comment=GitHub Copilot 中文界面的运行时注入器
+Exec=$TARGET/inject.mjs
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+AUTOSTART_EOF
+chmod +x "$AUTOSTART_DIR/copilot-zh-injector.desktop"
+
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" 2>/dev/null || true
 
 echo "[copilot-zh] 已安装到 $TARGET"
-echo "[copilot-zh] 现在点「GitHub Copilot」图标即为中文界面（原名，不新增图标）"
-echo "[copilot-zh] 提示：请先完全退出正在运行的 Copilot 再启动"
+echo "[copilot-zh] 已写入 $ENV_DIR/10-copilot-zh.conf（会话级检查器开关）"
+echo "[copilot-zh] 已写入 $AUTOSTART_DIR/copilot-zh-injector.desktop（登录自启注入器）"
+echo "[copilot-zh] 让一切启动方式都生效，需要重新登录一次；"
+echo "[copilot-zh] 只想立刻试，可以先完全退出 Copilot，再跑 $TARGET/launcher.sh"

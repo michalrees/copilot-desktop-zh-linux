@@ -61,7 +61,15 @@ cd copilot-desktop-zh-linux
 
 - 把脚本安装到 `${XDG_DATA_HOME:-~/.local/share}/copilot-zh`；
 - 把**已有的「GitHub Copilot」桌面项**的 `Exec` 改指向本项目的 `launcher.sh`
-  （原件备份为 `github-copilot.desktop.copilot-zh.orig`）。
+  （原件备份为 `github-copilot.desktop.copilot-zh.orig`）；
+- 写入 `~/.config/environment.d/10-copilot-zh.conf`，把
+  `WEBKIT_INSPECTOR_HTTP_SERVER` 设为**会话级环境变量**——这样 Dock、应用菜单、
+  终端、自启动……任何启动方式都会带检查器开关（**需重新登录一次生效**）；
+- 写入 `~/.config/autostart/copilot-zh-injector.desktop`，登录后自动常驻注入器。
+
+> 为什么还要环境变量：桌面项的 `Exec` 会被 GNOME Shell 缓存。改完文件后，
+> Dock 有时仍用旧的 `Exec` 直接拉起 AppImage，结果既没有检查器端口也没有注入器
+> （表现就是「打开的仍是英文」）。会话级环境变量不依赖桌面项，绕开了这个缓存问题。
 
 > 为什么不是新建一个「GitHub Copilot 中文版」图标：Ubuntu Dock 会把「所有
 > `StartupWMClass` 与运行中窗口匹配」的桌面项都列出来。两个文件同时声明
@@ -86,7 +94,17 @@ tail -f ~/.cache/copilot-zh/inject.log                    # 看注入器日志
 pkill -f 'copilot-zh/inject.mjs'                          # 停止注入（界面刷新后恢复英文）
 ```
 
-> ⚠️ 必须用这个启动器打开才是中文。直接跑 `/opt/github-copilot/...AppImage` 启动的仍是英文（没有检查器端口，注入器无处可连）。
+> ⚠️ 安装后建议**重新登录一次**：环境变量与自启注入器都只在登录时生效。
+> 未重登前，只有走 `launcher.sh`（含桌面项）启动才是中文；
+> 直接跑 `/opt/github-copilot/...AppImage` 的实例仍是英文。
+
+排查「打开还是英文」：
+
+```bash
+ss -ltn | grep 9222                                   # 没有 9222 → 该实例没带检查器开关
+tr '\0' '\n' < /proc/<pid>/environ | grep WEBKIT    # 同理，看进程环境
+tail -20 ~/.cache/copilot-zh/inject.log               # 注入器是否连上、翻译了多少处
+```
 
 自定义 AppImage 路径：
 

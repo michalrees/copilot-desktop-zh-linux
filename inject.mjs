@@ -14,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {PageSession, findSocketUrl, inspectorReady} from './lib/wk.mjs';
+import {PageSession, findTargetInfo, isCopilotTarget, inspectorReady} from './lib/wk.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.COPILOT_ZH_PORT || 9222);
@@ -73,10 +73,16 @@ async function waitForInspector() {
 async function ensureSession() {
     if (session && !session.closed)
         return session;
-    const socketUrl = await findSocketUrl(PORT);
-    session = new PageSession(socketUrl);
+    const target = await findTargetInfo(PORT);
+    if (!isCopilotTarget(target)) {
+        // 会话级环境变量对所有 WebKitGTK 应用生效，端口可能被别的应用先占用。
+        log(`端口 ${PORT} 上的目标不是 Copilot（${target.name || '未知'} / ${target.url || '未知'}），等待重试`);
+        await sleep(1000);
+        return ensureSession();
+    }
+    session = new PageSession(target.socketUrl);
     await session.open();
-    log('已连接检查器：' + socketUrl);
+    log(`已连接检查器：${target.socketUrl}（目标：${target.name} ${target.url}）`);
     return session;
 }
 
