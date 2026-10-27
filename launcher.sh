@@ -30,7 +30,9 @@ node -e 'if (+process.versions.node.split(".")[0] < 22) { console.error("需要 
 export WEBKIT_INSPECTOR_HTTP_SERVER="127.0.0.1:$PORT"
 
 if ! curl -s -m 1 "http://127.0.0.1:$PORT/" 2>/dev/null | grep -q "Inspectable targets"; then
-    if pgrep -f "GitHub-Copilot-linux-x64\.AppImage|appimage_extracted_[^ ]*/AppRun" >/dev/null 2>&1; then
+    # 用 ^ 锚定进程真实路径：`pgrep -f` 是按整条命令行做正则匹配的，
+    # 不加锚点会把「终端里正好敲了这段字符串的 shell」也当成 Copilot。
+    if pgrep -f '^/opt/github-copilot/GitHub-Copilot-linux-x64\.AppImage|^/tmp/appimage_extracted_[^ ]*/AppRun' >/dev/null 2>&1; then
         die "已经有一个 Copilot 实例在运行，但它不是用本启动器打开的（没有检查器端口）。
 请先完全退出 Copilot（包括托盘图标），再运行本启动器。"
     fi
